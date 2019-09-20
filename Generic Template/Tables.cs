@@ -27,12 +27,17 @@ namespace FullXotlTables
 
             int daysFromEarlier = fromEarlierDate.Days;
             int daysFromLater = fromLaterDate.Days;
+            int daysDifference = daysFromEarlier + daysFromLater;
 
-            if(daysFromEarlier + daysFromLater == 0)
+
+            //Logger.Log($" GetInterpolateFraction: Days From Earlier = {daysFromEarlier}");
+            //Logger.Log($" GetInterpolateFraction: Days From Later = {daysFromLater}");
+
+            if (daysDifference == 0)
             {
                 return 0f;
             }
-            else return Math.Max(daysFromEarlier / (daysFromEarlier + daysFromLater), 1.0f);
+            else return daysFromEarlier / daysDifference;
         }
 
         public Dictionary<string, int> ApplyAnySmoothing(Dictionary<string, int> listToSmooth)
@@ -64,12 +69,17 @@ namespace FullXotlTables
             int dateIndex = GetDateIndex(currentDate, dates);
             Dictionary<string, int> interpolatedList = new Dictionary<string, int>();
 
+            //Logger.Log($"InterpolateWeight: date index = {dateIndex}");
+            //Logger.Log($"InterpolateWeight: date count = {dates.Count}");
+
             if (dateIndex < dates.Count - 1)
             {
                 float fraction = 0f;
 
                 foreach (string key in weightList.Keys)
                 {
+                    //Logger.Log($"InterpolateWeight: {key}");
+
                     if (weightList[key][dateIndex].Value == 0 &&
                         weightList[key][dateIndex + 1].HasStart)
                     {
@@ -83,7 +93,7 @@ namespace FullXotlTables
                             {
                                 fraction = GetInterpolateFraction(currentDate, weightList[key][dateIndex + 1].StartDate, dates[dateIndex + 1]);
 
-                                interpolatedList.Add(key, Math.Min(1, (int)(weightList[key][dateIndex + 1].Value * fraction)));
+                                interpolatedList.Add(key, Math.Max(1, (int)(weightList[key][dateIndex + 1].Value * fraction)));
                             }
                         }
                     }
@@ -100,7 +110,7 @@ namespace FullXotlTables
                             {
                                 fraction = GetInterpolateFraction(currentDate, dates[dateIndex], weightList[key][dateIndex].StopDate);
 
-                                interpolatedList.Add(key, Math.Min(1, (int)(weightList[key][dateIndex].Value * (1.0f - fraction))));
+                                interpolatedList.Add(key, Math.Max(1, (int)(weightList[key][dateIndex].Value * (1.0f - fraction))));
                             }
                         }
                     }
@@ -121,11 +131,18 @@ namespace FullXotlTables
                         {
                             fraction = GetInterpolateFraction(currentDate, dates[dateIndex], dates[dateIndex + 1]);
 
-                            interpolatedList.Add(key, Math.Min(1,
-                                weightList[key][dateIndex].Value +
-                                        (int)((weightList[key][dateIndex + 1].Value - weightList[key][dateIndex].Value) * fraction)));
+                            interpolatedList.Add(key, weightList[key][dateIndex].Value +
+                                        (int)((weightList[key][dateIndex + 1].Value - weightList[key][dateIndex].Value) * fraction));
                         }
                     }
+                    /*if (interpolatedList.Keys.Contains(key))
+                    {
+                        Logger.Log($"InterpolateWeight: Weight = {interpolatedList[key]}");
+                    }
+                    else
+                    {
+                        Logger.Log($"InterpolateWeight: No weight, not added to list");
+                    }*/
                 }
             }
             else
@@ -168,13 +185,14 @@ namespace FullXotlTables
                 }
             }
 
-            Logger.Log($"RequestUnit: Faction = {faction}");
+            //Logger.Log($"RequestUnit: Faction = {faction}");
+            //Logger.Log($"Current Date: {currentDate.ToString()}");
             string tableToUse = faction;
             string finalTable = faction;
 
             if (!factions.Keys.Contains(faction))
             {
-                Logger.Log($"RequestUnit: Switching to general table as we don't have a table for that faction");
+                //Logger.Log($"RequestUnit: Switching to general table as we don't have a table for that faction");
                 tableToUse = "General";
                 finalTable = "General";
             }
@@ -188,19 +206,19 @@ namespace FullXotlTables
                 {
                     finalTable = tableToUse;
                     tableToUse = factions[tableToUse].RollCollection(currentDate);
-                    Logger.Log($"RequestUnit: Rolled New Collection = {tableToUse}");
+                    //Logger.Log($"RequestUnit: Rolled New Collection = {tableToUse}");
                 }
 
                 tableToUse = factions[finalTable].RollSalvage(currentDate);
-                Logger.Log($"RequestUnit: Rolled New Salvage = {tableToUse}");
+                //Logger.Log($"RequestUnit: Rolled New Salvage = {tableToUse}");
             }
 
-            Logger.Log($"RequestUnit: Final table to use = {finalTable}");
+            //Logger.Log($"RequestUnit: Final table to use = {finalTable}");
 
             // If we don't have a table for this faction use the general one
             if (!factions.Keys.Contains(finalTable))
             {
-                Logger.Log($"RequestUnit: Pulling unit from general table as we don't have a table for where we ended up");
+                //Logger.Log($"RequestUnit: Pulling unit from general table as we don't have a table for where we ended up");
                 finalTable = "General";
             }
 
@@ -299,14 +317,20 @@ namespace FullXotlTables
                     finalRoll -= interpolateList[key];
                 }
 
+                //Logger.Log($" Rolled unit: {unit}");
+
                 unitSatisfiesTags = CheckUnitAgainstTags(unit, includeTags, excludeTags, currentDate, companyTags);
 
-                if (Core.Settings.IgnoreRepetitionOnce)
+                //Logger.Log($" Unit Satisfies Lance Tags: {unitSatisfiesTags}");
+
+                if (Core.Settings.IgnoreRepetitionOnce &&
+                    unitSatisfiesTags == true)
                 {
                     if (lastThreeMechs.Contains(unit))
                     {
                         unitSatisfiesTags = false;
                         lastThreeMechs.Remove(unit);
+                        //Logger.Log($" Repeat Mech, going to roll again");
                     }
                     else
                     {
@@ -315,6 +339,7 @@ namespace FullXotlTables
                             lastThreeMechs.RemoveAt(0);
                         }
                         lastThreeMechs.Add(unit);
+                        //Logger.Log($" Not a Repeat Mech");
                     }
                 }
             }

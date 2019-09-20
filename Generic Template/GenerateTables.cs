@@ -120,10 +120,11 @@ namespace FullXotlTables
             }
             */
             List<WeightValue> weightRead = new List<WeightValue>();
-            WeightValue weight = new WeightValue();
+            WeightValue weight;
 
             for (int weightIndex = 1; weightIndex < lineToRead.Length; weightIndex += 2)
             {
+                weight = new WeightValue();
                 weight.Value = int.Parse(lineToRead[weightIndex]);
 
                 // weightIndex 1 will be our first date so don't check for intermediate date before
